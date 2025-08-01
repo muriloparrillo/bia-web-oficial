@@ -1,103 +1,207 @@
-import Image from "next/image";
+'use client';
 
-export default function Home() {
+import React, { useState, useEffect } from 'react';
+import { BiaProvider, useBia } from '@/components/BiaContext';
+import { Layout } from '@/components/Layout';
+import { LoginRegister } from '@/components/LoginRegister';
+import { Dashboard } from '@/components/Dashboard';
+import { MeusSites } from '@/components/pages/MeusSites';
+import { GerarIdeias } from '@/components/pages/GerarIdeias';
+import { ProduzirArtigos } from '@/components/pages/ProduzirArtigos';
+import { AdminPanel } from '@/components/pages/AdminPanel';
+import { AgendarPosts } from '@/components/pages/AgendarPosts';
+import { Calendario } from '@/components/pages/Calendario';
+import { Historico } from '@/components/pages/Historico';
+import { Excluidos } from '@/components/pages/Excluidos';
+import { LojaBIA } from '@/components/pages/LojaBIA';
+import { Maisfy } from '@/components/pages/Maisfy';
+import { Suporte } from '@/components/pages/Suporte';
+import { MinhaConta } from '@/components/pages/MinhaConta';
+import { toast, Toaster } from 'sonner';
+
+function AppContent() {
+  const [currentPage, setCurrentPage] = useState('dashboard');
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userData, setUserData] = useState<any>(null);
+  const { actions } = useBia();
+
+  useEffect(() => {
+    console.log('App iniciando...');
+    const savedUser = localStorage.getItem('bia-user');
+    if (savedUser) {
+      try {
+        const user = JSON.parse(savedUser);
+        setUserData(user);
+        setIsLoggedIn(true);
+        actions.login(user);
+        setTimeout(async () => {
+          try {
+            const { wordpressService } = await import('@/services/wordpressService');
+            await wordpressService.syncFromBiaContext();
+          } catch (error) {
+            console.warn('Erro ao sincronizar WordPress na inicialização:', error);
+          }
+        }, 500);
+      } catch (error) {
+        console.error('Erro ao carregar dados do usuário:', error);
+        localStorage.removeItem('bia-user');
+      }
+    }
+
+    const handleHashChange = () => {
+      const hash = window.location.hash.substring(1);
+      if (hash) {
+        setCurrentPage(hash);
+      }
+    };
+
+    window.addEventListener('hashchange', handleHashChange);
+    handleHashChange();
+
+    return () => {
+      window.removeEventListener('hashchange', handleHashChange);
+    };
+  }, []);
+
+  const handleLogin = async (user: any) => {
+    setUserData(user);
+    setIsLoggedIn(true);
+    localStorage.setItem('bia-user', JSON.stringify(user));
+    actions.login(user);
+    toast.success(`Bem-vindo, ${user.name}!`);
+    try {
+      const { projectId, publicAnonKey } = await import('@/utils/supabase/info');
+      const healthCheck = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-53322c0b/health`, {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${publicAnonKey}` },
+        signal: AbortSignal.timeout(5000),
+      });
+      if (!healthCheck.ok) throw new Error('Servidor indisponível');
+      const loginResponse = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-53322c0b/users/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${publicAnonKey}` },
+        body: JSON.stringify({ email: user.email }),
+        signal: AbortSignal.timeout(10000),
+      });
+      const loginResult = await loginResponse.json();
+      if (loginResult.success && loginResult.user) {
+        const updatedUser = { ...user, ...loginResult.user };
+        setUserData(updatedUser);
+        localStorage.setItem('bia-user', JSON.stringify(updatedUser));
+        actions.login(updatedUser);
+      } else {
+        console.log('Usuário não encontrado, tentando migração...');
+        const registerResponse = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-53322c0b/users/register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${publicAnonKey}` },
+          body: JSON.stringify({
+            email: user.email,
+            name: user.name,
+            cpf: user.cpf || '',
+            whatsapp: user.whatsapp || '',
+            dataNascimento: user.dataNascimento || '',
+            plano: user.plano || 'Free',
+          }),
+          signal: AbortSignal.timeout(10000),
+        });
+        const registerResult = await registerResponse.json();
+        if (registerResult.success && registerResult.user) {
+          const updatedUser = { ...user, ...registerResult.user };
+          setUserData(updatedUser);
+          localStorage.setItem('bia-user', JSON.stringify(updatedUser));
+          actions.login(updatedUser);
+        } else {
+          console.warn('Migração falhou, continuando localmente:', registerResult.error);
+        }
+      }
+    } catch (error) {
+      console.warn('Sincronização com banco falhou:', error);
+    }
+    try {
+      const { adminService } = await import('@/services/adminService');
+      adminService.addUserToHistory(user);
+    } catch (error) {
+      console.warn('Erro ao registrar usuário no histórico:', error);
+    }
+  };
+
+  const handleLogout = () => {
+    setUserData(null);
+    setIsLoggedIn(false);
+    localStorage.removeItem('bia-user');
+    setCurrentPage('dashboard');
+    window.location.hash = '';
+    actions.logout();
+    toast.success('Logout realizado com sucesso!');
+  };
+
+  const handlePageChange = (page: string) => {
+    setCurrentPage(page);
+    window.location.hash = page;
+  };
+
+  const isAdmin = userData?.email === 'admin@bia.com' || userData?.email === 'dev@bia.com';
+
+  const renderCurrentPage = () => {
+    if (!isLoggedIn) {
+      return <LoginRegister onLogin={handleLogin} />;
+    }
+    switch (currentPage) {
+      case 'sites':
+        return <MeusSites userData={userData} />;
+      case 'ideas':
+        return <GerarIdeias userData={userData} onPageChange={handlePageChange} />;
+      case 'articles':
+        return <ProduzirArtigos userData={userData} />;
+      case 'schedule':
+        return <AgendarPosts userData={userData} />;
+      case 'calendar':
+        return <Calendario userData={userData} />;
+      case 'history':
+        return <Historico userData={userData} />;
+      case 'deleted':
+        return <Excluidos userData={userData} />;
+      case 'store':
+        return <LojaBIA userData={userData} />;
+      case 'maisfy':
+        return <Maisfy userData={userData} />;
+      case 'support':
+        return <Suporte userData={userData} />;
+      case 'account':
+        return <MinhaConta userData={userData} />;
+      case 'admin':
+        if (!isAdmin) {
+          toast.error('Acesso negado. Apenas administradores podem acessar esta área.');
+          handlePageChange('dashboard');
+          return <Dashboard userData={userData} onNavigate={handlePageChange} />;
+        }
+        return <AdminPanel />;
+      default:
+        return <Dashboard userData={userData} onNavigate={handlePageChange} />;
+    }
+  };
+
+  if (!isLoggedIn) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <LoginRegister onLogin={handleLogin} />
+        <Toaster position="top-right" richColors closeButton duration={3000} />
+      </div>
+    );
+  }
+
   return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+    <Layout currentPage={currentPage} onNavigate={handlePageChange} onLogout={handleLogout} userData={userData} showAdminAccess={isAdmin}>
+      {renderCurrentPage()}
+      <Toaster position="top-right" richColors closeButton duration={3000} />
+    </Layout>
+  );
+}
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+export default function Page() {
+  return (
+    <BiaProvider>
+      <AppContent />
+    </BiaProvider>
   );
 }
