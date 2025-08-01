@@ -1093,17 +1093,27 @@ export function GerarIdeias({ userData, onPageChange }: GerarIdeiasProps) {
                   value={formData.autor} 
                   onValueChange={(value) => handleInputChange('autor', value)}
                 >
-                  <SelectTrigger className="font-montserrat">
+                  <SelectTrigger className="font-montserrat text-sm text-zinc-900">
                     <SelectValue placeholder="Selecionar autor" />
                   </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Nenhum autor específico</SelectItem>
-                    {wordpressData.authors.map(author => (
-                      <SelectItem key={`author-${author.id}`} value={author.id.toString()}>
-                        {author.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
+                  <SelectContent className="bg-white text-zinc-900 border border-zinc-200 shadow-lg">
+  <SelectItem
+    value="none"
+    className="font-montserrat text-sm text-zinc-900 hover:bg-zinc-100"
+  >
+    Nenhum autor específico
+  </SelectItem>
+  {wordpressData.authors.map(author => (
+    <SelectItem
+      key={`author-${author.id}`}
+      value={author.id.toString()}
+      className="font-montserrat text-sm text-zinc-900 hover:bg-zinc-100"
+    >
+      {author.name}
+    </SelectItem>
+  ))}
+</SelectContent>
+
                 </Select>
               </div>
             )}
@@ -1300,14 +1310,30 @@ export function GerarIdeias({ userData, onPageChange }: GerarIdeiasProps) {
               value={formData.ctaPosicao} 
               onValueChange={(value: 'inicio' | 'meio' | 'final') => handleInputChange('ctaPosicao', value)}
             >
-              <SelectTrigger className="font-montserrat text-sm text-zinc-900 font-medium">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="inicio">Início do artigo</SelectItem>
-                <SelectItem value="meio">Meio do artigo</SelectItem>
-                <SelectItem value="final">Final do artigo</SelectItem>
-              </SelectContent>
+<SelectTrigger className="font-montserrat text-sm text-zinc-900 font-medium border border-zinc-300 bg-white">
+  <SelectValue placeholder="Selecione a posição" />
+</SelectTrigger>
+<SelectContent className="bg-white text-zinc-900 border border-zinc-200 shadow-lg">
+  <SelectItem
+    value="inicio"
+    className="font-montserrat text-sm text-zinc-900 hover:bg-zinc-100"
+  >
+    Início do artigo
+  </SelectItem>
+  <SelectItem
+    value="meio"
+    className="font-montserrat text-sm text-zinc-900 hover:bg-zinc-100"
+  >
+    Meio do artigo
+  </SelectItem>
+  <SelectItem
+    value="final"
+    className="font-montserrat text-sm text-zinc-900 hover:bg-zinc-100"
+  >
+    Final do artigo
+  </SelectItem>
+</SelectContent>
+
             </Select>
           </div>
 
