@@ -423,12 +423,20 @@ export function LoginRegister({ onLogin }: LoginRegisterProps) {
             
             {/* Título */}
             <div className="text-center">
-              <CardTitle className="font-poppins text-xl text-gray-900">
-                {activeTab === 'login' 
-                  ? 'Entrar na sua conta' 
-                  : `${getStepTitle(registerStep)} (${registerStep}/4)`
-                }
-              </CardTitle>
+<CardTitle className="font-poppins text-lg font-semibold text-zinc-900 flex items-center space-x-2 justify-center">
+  {activeTab === 'login' ? (
+    <>
+      <User className="text-purple-600" size={20} />
+      <span>Entrar na sua conta</span>
+    </>
+  ) : (
+    <>
+      <UserPlus className="text-purple-600" size={20} />
+      <span>{getStepTitle(registerStep)} ({registerStep}/4)</span>
+    </>
+  )}
+</CardTitle>
+
             </div>
 
             {/* Barra de progresso para cadastro */}
@@ -505,14 +513,21 @@ export function LoginRegister({ onLogin }: LoginRegisterProps) {
                     </div>
                   </div>
 
-                  <Button
-                    type="submit"
-                    className="w-full font-montserrat text-white"
-                    disabled={isLoading}
-                    style={{ backgroundColor: '#8B5FBF' }}
-                  >
-                    {isLoading ? 'Entrando...' : 'Entrar'}
-                  </Button>
+<Button
+  type="submit"
+  disabled={isLoading}
+  className="w-full flex items-center justify-center space-x-2 bg-purple-700 hover:bg-purple-800 text-white font-poppins text-sm font-medium shadow-md transition-all"
+>
+  {isLoading ? (
+    <span>Entrando...</span>
+  ) : (
+    <>
+      <User className="w-4 h-4" />
+      <span>Entrar</span>
+    </>
+  )}
+</Button>
+
                 </form>
               </TabsContent>
 

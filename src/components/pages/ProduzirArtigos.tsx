@@ -523,19 +523,12 @@ export function ProduzirArtigos({ userData }: ProduzirArtigosProps) {
 
       {/* Lista de ideias */}
       <Card>
-        <CardHeader>
-          <CardTitle className="font-poppins flex items-center justify-between">
-            <div className="flex items-center">
-              <FileText className="mr-2 h-5 w-5 text-purple-600" />
-              Seus Temas ({availableIdeas.length})
-            </div>
-            {selectedIdeas.size > 0 && (
-              <Badge className="bg-purple-100 text-purple-700">
-                {selectedIdeas.size} selecionado{selectedIdeas.size > 1 ? 's' : ''}
-              </Badge>
-            )}
-          </CardTitle>
-        </CardHeader>
+  <CardHeader>
+    <CardTitle className="font-poppins text-lg font-semibold text-zinc-900 flex items-center space-x-2">
+      <FileText size={20} className="text-purple-600" />
+      <span>Seus Temas ({availableIdeas.length})</span>
+    </CardTitle>
+  </CardHeader>
         <CardContent>
           {currentPageIdeas.length === 0 ? (
             <div className="text-center py-12">
